@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use Illuminate\Container\Container;
 use App\Services\UserService;
 use App\Interfaces\UserRepositoryInterface;
+use App\Jobs\LogMessageJob;
 
 Route::get('/test-di', function () {
     // Получаем экземпляр контейнера для 2 урока
@@ -65,3 +66,9 @@ Route::get('/test-users', function () {
     return User::all();
 });
 Route::get('/users', [UserController::class, 'index']);
+Route::get('/test-job', function () {
+    // Отправляем задачу в очередь
+    LogMessageJob::dispatch('Тестовое сообщение из браузера');
+
+    return 'Задача отправлена в очередь! Проверь job_log.txt';
+});
