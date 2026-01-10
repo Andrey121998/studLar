@@ -41,6 +41,11 @@ class UserService
         return $this->userRepository->find($id);
     }
 
+    public function getUserByEmail(string $email)
+    {
+        return $this->userRepository->findUserByEmail($email);
+    }
+
     public function checkDependencies()
 {
     return [
