@@ -1,17 +1,6 @@
 name: Laravel CI
 
 on:
-push:
-branches: [ main ]
-pull_request:
-branches: [ main ]
-
-jobs:
-test:
-runs-on: ubuntu-latest
-name: Laravel CI
-
-on:
   push:
     branches: [ main ]
   pull_request:
@@ -35,16 +24,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Debug info
-        run: |
-          echo "GITHUB_REF=$GITHUB_REF"
-          echo "GITHUB_SHA=$GITHUB_SHA"
-          echo "Actor=$GITHUB_ACTOR"
-          echo "List repo root:"
-          ls -la
-          echo "List .github/workflows:"
-          ls -la .github/workflows || true
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -52,17 +31,9 @@ jobs:
           extensions: mbstring, pdo, pdo_mysql, bcmath, ctype, fileinfo, json, openssl, tokenizer, xml, gd
           coverage: none
 
-      - name: Cache Composer packages
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-composer-
-
       - name: Copy .env
         run: |
-          cp .env.example .env
+          cp .env.example .env || true
           echo "APP_ENV=testing" >> .env
           echo "DB_CONNECTION=mysql" >> .env
           echo "DB_HOST=127.0.0.1" >> .env
@@ -70,7 +41,6 @@ jobs:
           echo "DB_DATABASE=laravel_test" >> .env
           echo "DB_USERNAME=root" >> .env
           echo "DB_PASSWORD=password" >> .env
-          cat .env
 
       - name: Install dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
@@ -84,18 +54,14 @@ jobs:
           sudo apt-get install -y netcat
           for i in {1..60}; do
             nc -z 127.0.0.1 3306 && echo "MySQL is up" && break
-            echo "Waiting for MySQL..."
             sleep 1
           done
-          mysql -h 127.0.0.1 -u root -ppassword -e "SELECT VERSION();" || true
 
       - name: Create database
-        run: |
-          mysql -h 127.0.0.1 -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS laravel_test;"
+        run: mysql -h 127.0.0.1 -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS laravel_test;"
 
       - name: Run migrations
         run: php artisan migrate --force
 
       - name: Run tests
         run: vendor/bin/phpunit
-
