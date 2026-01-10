@@ -1,0 +1,105 @@
+
+# GitLab CI/CD Configuration for Laravel
+# This file defines the pipeline that runs on GitLab
+
+stages:
+- test
+- deploy
+
+variables:
+MYSQL_ROOT_PASSWORD: root
+MYSQL_DATABASE: laravel_test
+DB_CONNECTION: mysql
+DB_HOST: mysql
+DB_PORT: 3306
+DB_DATABASE: laravel_test
+DB_USERNAME: root
+DB_PASSWORD: root
+
+cache:
+paths:
+  - vendor/
+  - node_modules/
+key: ${CI_COMMIT_REF_SLUG}
+
+services:
+- mysql:8.0
+
+# Before script runs before each job
+before_script:
+- apt-get update -y
+- apt-get install -y git curl unzip libzip-dev libpng-dev libonig-dev libxml2-dev
+- docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd
+
+# Install Composer
+- curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+- composer --version
+
+# Setup application
+- cp .env.example .env
+- php artisan key:generate
+
+# Install dependencies
+- composer install --no-progress --prefer-dist --optimize-autoloader
+
+# Wait for MySQL to be ready
+- echo 'Waiting for MySQL to start...'
+- while ! mysqladmin ping -h'mysql' -P'3306' --silent; do
+    sleep 2
+  done
+
+# Create test database
+- mysql -h mysql -u root -proot -e 'CREATE DATABASE IF NOT EXISTS laravel_test;'
+
+# Run migrations
+- php artisan migrate --force
+
+# Test stage jobs
+phpunit:
+stage: test
+script:
+  - echo 'Running PHPUnit tests...'
+  - vendor/bin/phpunit --verbose --colors=always
+artifacts:
+  when: always
+  paths:
+    - storage/logs/
+  reports:
+    junit: tests/reports/junit.xml
+
+pest:
+stage: test
+script:
+  - echo 'Running Pest tests...'
+  - vendor/bin/pest --verbose
+dependencies: []
+
+lint:
+stage: test
+script:
+  - echo 'Checking PHP syntax...'
+  - find . -name '*.php' -not -path './vendor/*' -exec php -l {} \;
+
+# Deploy stage jobs (will be configured later)
+deploy-staging:
+stage: deploy
+script:
+  - echo 'Deploying to staging environment...'
+  - echo 'Add your deployment commands here'
+environment:
+  name: staging
+  url: https://staging.example.com
+only:
+  - develop
+
+deploy-production:
+stage: deploy
+script:
+  - echo 'Deploying to production environment...'
+  - echo 'Add your deployment commands here'
+environment:
+  name: production
+  url: https://production.example.com
+only:
+  - main
+when: manual
